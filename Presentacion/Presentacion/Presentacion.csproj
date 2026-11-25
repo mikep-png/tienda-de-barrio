@@ -8,9 +8,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+<<<<<<< HEAD
   <ItemGroup>
     <ProjectReference Include="..\..\Modelos\Modelos\Modelos.csproj" />
     <ProjectReference Include="..\..\Servicios\Servicios\Servicios.csproj" />
   </ItemGroup>
 
+=======
+>>>>>>> 2694a36c74f293d92b2c16a095450b8129786946
 </Project>

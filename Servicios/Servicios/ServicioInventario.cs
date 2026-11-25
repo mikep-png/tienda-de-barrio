@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿
 using System;
 using System.Collections.Generic;
@@ -176,5 +177,15 @@ namespace Servicios
                 throw new ArgumentException(
                     "Debe seleccionar una categoría.");
         }
+=======
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace Servicios
+{
+    internal class ServicioInventario
+    {
+>>>>>>> 2694a36c74f293d92b2c16a095450b8129786946
     }
 }

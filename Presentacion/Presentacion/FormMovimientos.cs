@@ -1,13 +1,24 @@
+<<<<<<< HEAD
 ﻿
 using System;
 using System.Windows.Forms;
 using Servicios;
 using Modelos;
+=======
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Text;
+using System.Windows.Forms;
+>>>>>>> 2694a36c74f293d92b2c16a095450b8129786946
 
 namespace Presentacion
 {
     public partial class FormMovimientos : Form
     {
+<<<<<<< HEAD
         private readonly ServicioInventario _servicio;
 
         public FormMovimientos()
@@ -123,6 +134,11 @@ namespace Presentacion
                 error ? "Validación" : "Movimiento registrado",
                 MessageBoxButtons.OK,
                 error ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
+=======
+        public FormMovimientos()
+        {
+            InitializeComponent();
+>>>>>>> 2694a36c74f293d92b2c16a095450b8129786946
         }
     }
 }
