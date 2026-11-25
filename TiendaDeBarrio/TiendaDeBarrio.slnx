@@ -1,1 +1,6 @@
-<Solution />
+<Solution>
+  <Project Path="../Datos/Datos.csproj" />
+  <Project Path="../Modelos/Modelos/Modelos.csproj" />
+  <Project Path="../Presentacion/Presentacion/Presentacion.csproj" />
+  <Project Path="../Servicios/Servicios/Servicios.csproj" />
+</Solution>
