@@ -1,142 +1,143 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
+﻿
+using Datos.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Modelos;
 
-namespace Datos
+namespace Datos;
+
+public class RepositorioProductos : IRepositorioProductos
 {
-    public class RepositorioProductos
+    public Producto Registrar(Producto producto)
     {
-        private readonly string _rutaArchivo;
-        private readonly List<Producto> _productos;
-        private readonly JsonSerializerOptions _jsonOptions;
+        ArgumentNullException.ThrowIfNull(producto);
 
-        public RepositorioProductos(string? rutaArchivo = null)
+        Validar(producto);
+
+        using var db = new InventarioContext();
+
+        bool categoriaExiste = db.Categorias
+            .Any(c => c.Id == producto.IdCategoria);
+
+        if (!categoriaExiste)
+            throw new ArgumentException("La categoría seleccionada no existe.");
+
+        producto.Id = 0;
+        producto.Categoria = null;
+
+        db.Productos.Add(producto);
+        db.SaveChanges();
+
+        return producto;
+    }
+
+    public List<Producto> Listar()
+    {
+        using var db = new InventarioContext();
+
+        return db.Productos
+            .AsNoTracking()
+            .Include(p => p.Categoria)
+            .OrderBy(p => p.Nombre)
+            .ToList();
+    }
+
+    public Producto? BuscarPorId(int id)
+    {
+        using var db = new InventarioContext();
+
+        return db.Productos
+            .AsNoTracking()
+            .Include(p => p.Categoria)
+            .FirstOrDefault(p => p.Id == id);
+    }
+
+    public List<Producto> BuscarPorNombre(string nombre)
+    {
+        using var db = new InventarioContext();
+
+        var consulta = db.Productos
+            .AsNoTracking()
+            .Include(p => p.Categoria)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(nombre))
         {
-            _rutaArchivo = rutaArchivo ?? Path.Combine(AppContext.BaseDirectory, "DatosJson", "productos.json");
-            _jsonOptions = new JsonSerializerOptions
-            {
-                WriteIndented = true
-            };
-            _productos = CargarDesdeArchivo();
+            string busqueda = nombre.Trim();
+
+            consulta = consulta.Where(p =>
+                EF.Functions.Like(p.Nombre, $"%{busqueda}%"));
         }
 
-        public Producto Registrar(Producto producto)
-        {
-            if (producto == null)
-            {
-                throw new ArgumentNullException(nameof(producto));
-            }
+        return consulta.OrderBy(p => p.Nombre).ToList();
+    }
 
-            if (producto.Id <= 0 || _productos.Any(p => p.Id == producto.Id))
-            {
-                producto.Id = _productos.Count == 0 ? 1 : _productos.Max(p => p.Id) + 1;
-            }
+    public List<Producto> BuscarPorCategoria(int idCategoria)
+    {
+        using var db = new InventarioContext();
 
-            _productos.Add(producto);
-            GuardarEnArchivo();
-            return producto;
-        }
+        return db.Productos
+            .AsNoTracking()
+            .Include(p => p.Categoria)
+            .Where(p => p.IdCategoria == idCategoria)
+            .ToList();
+    }
 
-        public List<Producto> Listar()
-        {
-            return _productos.ToList();
-        }
+    public bool Modificar(Producto producto)
+    {
+        ArgumentNullException.ThrowIfNull(producto);
 
-        public Producto? BuscarPorId(int id)
-        {
-            return _productos.FirstOrDefault(p => p.Id == id);
-        }
+        Validar(producto);
 
-        public List<Producto> BuscarPorNombre(string nombre)
-        {
-            if (string.IsNullOrWhiteSpace(nombre))
-            {
-                return _productos.ToList();
-            }
+        using var db = new InventarioContext();
 
-            return _productos
-                .Where(p => p.Nombre.Contains(nombre.Trim(), StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
+        var existente = db.Productos.Find(producto.Id);
 
-        public List<Producto> BuscarPorCategoria(int idCategoria)
-        {
-            return _productos
-                .Where(p => p.IdCategoria == idCategoria)
-                .ToList();
-        }
+        if (existente == null)
+            return false;
 
-        public bool Modificar(Producto productoActualizado)
-        {
-            if (productoActualizado == null)
-            {
-                throw new ArgumentNullException(nameof(productoActualizado));
-            }
+        bool categoriaExiste = db.Categorias
+            .Any(c => c.Id == producto.IdCategoria);
 
-            Producto? existente = _productos.FirstOrDefault(p => p.Id == productoActualizado.Id);
-            if (existente == null)
-            {
-                return false;
-            }
+        if (!categoriaExiste)
+            throw new ArgumentException("La categoría seleccionada no existe.");
 
-            existente.Nombre = productoActualizado.Nombre;
-            existente.Precio = productoActualizado.Precio;
-            existente.Stock = productoActualizado.Stock;
-            existente.IdCategoria = productoActualizado.IdCategoria;
-            GuardarEnArchivo();
-            return true;
-        }
+        existente.Nombre = producto.Nombre.Trim();
+        existente.Precio = producto.Precio;
+        existente.Stock = producto.Stock;
+        existente.IdCategoria = producto.IdCategoria;
 
-        public bool Eliminar(int id)
-        {
-            Producto? existente = _productos.FirstOrDefault(p => p.Id == id);
-            if (existente == null)
-            {
-                return false;
-            }
+        db.SaveChanges();
 
-            _productos.Remove(existente);
-            GuardarEnArchivo();
-            return true;
-        }
+        return true;
+    }
 
-        private List<Producto> CargarDesdeArchivo()
-        {
-            try
-            {
-                if (!File.Exists(_rutaArchivo))
-                {
-                    return new List<Producto>();
-                }
+    public bool Eliminar(int id)
+    {
+        using var db = new InventarioContext();
 
-                string json = File.ReadAllText(_rutaArchivo, Encoding.UTF8);
-                if (string.IsNullOrWhiteSpace(json))
-                {
-                    return new List<Producto>();
-                }
+        var existente = db.Productos.Find(id);
 
-                return JsonSerializer.Deserialize<List<Producto>>(json, _jsonOptions) ?? new List<Producto>();
-            }
-            catch
-            {
-                return new List<Producto>();
-            }
-        }
+        if (existente == null)
+            return false;
 
-        private void GuardarEnArchivo()
-        {
-            string? directorio = Path.GetDirectoryName(_rutaArchivo);
-            if (!string.IsNullOrWhiteSpace(directorio) && !Directory.Exists(directorio))
-            {
-                Directory.CreateDirectory(directorio);
-            }
+        db.Productos.Remove(existente);
+        db.SaveChanges();
 
-            string json = JsonSerializer.Serialize(_productos, _jsonOptions);
-            File.WriteAllText(_rutaArchivo, json, Encoding.UTF8);
-        }
+        return true;
+    }
+
+    private static void Validar(Producto producto)
+    {
+        if (string.IsNullOrWhiteSpace(producto.Nombre))
+            throw new ArgumentException("El nombre del producto es obligatorio.");
+
+        if (producto.Precio <= 0)
+            throw new ArgumentException("El precio debe ser mayor que cero.");
+
+        if (producto.Stock < 0)
+            throw new ArgumentException("El stock no puede ser negativo.");
+
+        if (producto.IdCategoria <= 0)
+            throw new ArgumentException("Debe seleccionar una categoría.");
     }
 }

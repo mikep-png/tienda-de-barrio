@@ -1,134 +1,106 @@
-﻿using Modelos;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Xml.Linq;
+﻿
+using Datos.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using Modelos;
 
-namespace Datos
+namespace Datos;
+
+public class RepositorioCategorias : IRepositorioCategorias
 {
-    public class RepositorioCategorias
+    public Categoria Registrar(Categoria categoria)
     {
-        private readonly string _rutaArchivo;
-        private readonly List<Categoria> _categorias;
-        private readonly JsonSerializerOptions _jsonOptions;
+        ArgumentNullException.ThrowIfNull(categoria);
 
-        public RepositorioCategorias(string? rutaArchivo = null)
+        if (string.IsNullOrWhiteSpace(categoria.Nombre))
+            throw new ArgumentException("El nombre es obligatorio.");
+
+        using var db = new InventarioContext();
+
+        categoria.Id = 0;
+
+        db.Categorias.Add(categoria);
+        db.SaveChanges();
+
+        return categoria;
+    }
+
+    public List<Categoria> Listar()
+    {
+        using var db = new InventarioContext();
+
+        return db.Categorias
+            .AsNoTracking()
+            .OrderBy(c => c.Nombre)
+            .ToList();
+    }
+
+    public Categoria? BuscarPorId(int id)
+    {
+        using var db = new InventarioContext();
+
+        return db.Categorias
+            .AsNoTracking()
+            .FirstOrDefault(c => c.Id == id);
+    }
+
+    public List<Categoria> BuscarPorNombre(string nombre)
+    {
+        using var db = new InventarioContext();
+
+        var consulta = db.Categorias.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(nombre))
         {
-            _rutaArchivo = rutaArchivo ?? Path.Combine(AppContext.BaseDirectory, "DatosJson", "categorias.json");
-            _jsonOptions = new JsonSerializerOptions
-            {
-                WriteIndented = true
-            };
-            _categorias = CargarDesdeArchivo();
+            string busqueda = nombre.Trim();
+
+            consulta = consulta.Where(c =>
+                EF.Functions.Like(c.Nombre, $"%{busqueda}%"));
         }
 
-        public Categoria Registrar(Categoria categoria)
-        {
-            if (categoria == null)
-            {
-                throw new ArgumentNullException(nameof(categoria));
-            }
+        return consulta.OrderBy(c => c.Nombre).ToList();
+    }
 
-            if (categoria.Id <= 0 || _categorias.Any(c => c.Id == categoria.Id))
-            {
-                categoria.Id = _categorias.Count == 0 ? 1 : _categorias.Max(c => c.Id) + 1;
-            }
+    public bool Modificar(Categoria categoria)
+    {
+        ArgumentNullException.ThrowIfNull(categoria);
 
-            _categorias.Add(categoria);
-            GuardarEnArchivo();
-            return categoria;
-        }
+        if (string.IsNullOrWhiteSpace(categoria.Nombre))
+            throw new ArgumentException("El nombre es obligatorio.");
 
-        public List<Categoria> Listar()
-        {
-            return _categorias.ToList();
-        }
+        using var db = new InventarioContext();
 
-        public Categoria? BuscarPorId(int id)
-        {
-            return _categorias.FirstOrDefault(c => c.Id == id);
-        }
+        var existente = db.Categorias.Find(categoria.Id);
 
-        public List<Categoria> BuscarPorNombre(string nombre)
-        {
-            if (string.IsNullOrWhiteSpace(nombre))
-            {
-                return _categorias.ToList();
-            }
+        if (existente == null)
+            return false;
 
-            return _categorias
-                .Where(c => c.Nombre.Contains(nombre.Trim(), StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
+        existente.Nombre = categoria.Nombre.Trim();
+        existente.Descripcion = categoria.Descripcion?.Trim() ?? "";
 
-        public bool Modificar(Categoria categoriaActualizada)
-        {
-            if (categoriaActualizada == null)
-            {
-                throw new ArgumentNullException(nameof(categoriaActualizada));
-            }
+        db.SaveChanges();
 
-            Categoria? existente = _categorias.FirstOrDefault(c => c.Id == categoriaActualizada.Id);
-            if (existente == null)
-            {
-                return false;
-            }
+        return true;
+    }
 
-            existente.Nombre = categoriaActualizada.Nombre;
-            existente.Descripcion = categoriaActualizada.Descripcion;
-            GuardarEnArchivo();
-            return true;
-        }
+    public bool Eliminar(int id)
+    {
+        using var db = new InventarioContext();
 
-        public bool Eliminar(int id)
-        {
-            Categoria? existente = _categorias.FirstOrDefault(c => c.Id == id);
-            if (existente == null)
-            {
-                return false;
-            }
+        var existente = db.Categorias.Find(id);
 
-            _categorias.Remove(existente);
-            GuardarEnArchivo();
-            return true;
-        }
+        if (existente == null)
+            return false;
 
-        private List<Categoria> CargarDesdeArchivo()
-        {
-            try
-            {
-                if (!File.Exists(_rutaArchivo))
-                {
-                    return new List<Categoria>();
-                }
+        bool tieneProductos = db.Productos
+            .Any(p => p.IdCategoria == id);
 
-                string json = File.ReadAllText(_rutaArchivo, Encoding.UTF8);
-                if (string.IsNullOrWhiteSpace(json))
-                {
-                    return new List<Categoria>();
-                }
+        if (tieneProductos)
+            throw new InvalidOperationException(
+                "No se puede eliminar una categoría que tiene productos.");
 
-                return JsonSerializer.Deserialize<List<Categoria>>(json, _jsonOptions) ?? new List<Categoria>();
-            }
-            catch
-            {
-                return new List<Categoria>();
-            }
-        }
+        db.Categorias.Remove(existente);
+        db.SaveChanges();
 
-        private void GuardarEnArchivo()
-        {
-            string? directorio = Path.GetDirectoryName(_rutaArchivo);
-            if (!string.IsNullOrWhiteSpace(directorio) && !Directory.Exists(directorio))
-            {
-                Directory.CreateDirectory(directorio);
-            }
-
-            string json = JsonSerializer.Serialize(_categorias, _jsonOptions);
-            File.WriteAllText(_rutaArchivo, json, Encoding.UTF8);
-        }
+        return true;
     }
 }

@@ -15,6 +15,7 @@ namespace Presentacion
 
         private Button btnFiltrarStockBajo;
         private Button btnVerTodo;
+        private Button btnReporteCategorias;
 
         private DataGridView dgvReportes;
 
@@ -44,6 +45,7 @@ namespace Presentacion
 
             btnFiltrarStockBajo = new Button();
             btnVerTodo = new Button();
+            btnReporteCategorias = new Button();
 
             dgvReportes = new DataGridView();
 
@@ -100,7 +102,7 @@ namespace Presentacion
             nudStockMinimo.Maximum = 10000;
             nudStockMinimo.Value = 5;
 
-            // Filtrar
+            // Filtrar stock bajo
             btnFiltrarStockBajo.Location = new Point(205, 61);
             btnFiltrarStockBajo.Size = new Size(155, 30);
             btnFiltrarStockBajo.Text = "Consultar stock bajo";
@@ -112,15 +114,19 @@ namespace Presentacion
             btnVerTodo.Text = "Ver todo el inventario";
             btnVerTodo.Click += btnVerTodo_Click;
 
+            // Reporte por categorías
+            btnReporteCategorias.Location = new Point(535, 61);
+            btnReporteCategorias.Size = new Size(210, 30);
+            btnReporteCategorias.Text = "Reporte por categorías";
+            btnReporteCategorias.Click += btnReporteCategorias_Click;
+
             // Tabla
             dgvReportes.Location = new Point(20, 110);
             dgvReportes.Size = new Size(725, 280);
             dgvReportes.ReadOnly = true;
-            dgvReportes.SelectionMode =
-                DataGridViewSelectionMode.FullRowSelect;
+            dgvReportes.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgvReportes.MultiSelect = false;
-            dgvReportes.AutoSizeColumnsMode =
-                DataGridViewAutoSizeColumnsMode.Fill;
+            dgvReportes.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvReportes.AllowUserToAddRows = false;
             dgvReportes.RowHeadersVisible = false;
 
@@ -142,6 +148,7 @@ namespace Presentacion
                 nudStockMinimo,
                 btnFiltrarStockBajo,
                 btnVerTodo,
+                btnReporteCategorias,
                 dgvReportes
             });
 
